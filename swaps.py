@@ -3,27 +3,13 @@ import json
 import webapp2
 
 from authentication import with_email
+from parsing import with_json_body
 from models import Item, Swap
-
-def get_email(token):
-    return "test.example@email.com"
 
 class SwapsEndpoint(webapp2.RequestHandler):
     @with_email
-    def post(self, e):
-        if e is None:
-            self.response.status = 401 # not really with the spec, but lets just go with this for now
-            self.response.headers['Content-Type'] = 'application/json'
-            self.response.write(json.dumps({"error": "Unable to authenticate"}))
-            return
-        b = self.request.body
-        try:
-            r = json.loads(b)
-        except Exception:
-            self.response.status = 400
-            self.response.headers['Content-Type'] = 'application/json'
-            self.response.write(json.dumps({"error": "Unable to parse request"}))
-            return
+    @with_json_body
+    def post(self, r, e):
         o = r.get("my_item", None)
         t = r.get("other_item", None)
         if o is None or t is None:

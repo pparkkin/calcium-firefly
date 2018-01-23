@@ -19,12 +19,18 @@ flow = flow_from_clientsecrets(
     redirect_uri = 'http://{}/oauth2callback'.format(host))
 
 def with_email(f):
-    def w(self):
+    def w(*args, **kwargs):
+        self = args[0]
         token = self.request.headers.get("X-Auth-Token", None)
         logging.info("Got token {}".format(token))
         credentials = retrieve_credentials(token)
         email = get_email(credentials)
-        return f(self, email)
+        if email is None:
+            self.response.status = 401 # not really with the spec, but lets just go with this for now
+            self.response.headers['Content-Type'] = 'application/json'
+            self.response.write(json.dumps({"error": "Unable to authenticate"}))
+            return
+        return f(self, email, *args[1:], **kwargs)
     return w
 
 def get_email(credentials):
