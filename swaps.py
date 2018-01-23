@@ -5,6 +5,7 @@ import webapp2
 from authentication import with_email
 from parsing import with_json_body
 from models import Item, Swap
+from google.appengine.api.datastore_errors import TransactionFailedError
 
 class SwapsEndpoint(webapp2.RequestHandler):
     @with_email
@@ -29,14 +30,15 @@ class SwapsEndpoint(webapp2.RequestHandler):
             self.response.headers['Content-Type'] = 'application/json'
             self.response.write(json.dumps({"error": "The item you are trying to swap is not yours"}))
             return
-        s = Swap(one=one.key, two=two.key)
-        k = s.put()
-        one.swap = k
-        two.swap = k
-        one.put()
-        two.put()
-        self.response.status = 200
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write(json.dumps({
-            "id": str(k.id())
-        }))
+
+        try:
+            sid = Swap.create(one, two).get_id()
+            self.response.status = 200
+            self.response.headers['Content-Type'] = 'application/json'
+            self.response.write(json.dumps({
+                "id": str(sid)
+            }))
+        except TransactionFailedError:
+            self.response.status = 500
+            self.response.headers['Content-Type'] = 'application/json'
+            self.response.write(json.dumps({"error": "Transaction failed"}))
